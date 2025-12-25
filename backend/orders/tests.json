@@ -1,0 +1,47 @@
+{
+  "tests": [
+    {
+      "name": "Create new order",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Иван Тестов",
+        "email": "test@example.com",
+        "phone": "+79991234567",
+        "address": "ул. Тестовая, 1",
+        "plan_id": "1month"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "success": true,
+        "order_id": "number",
+        "user_id": "number"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get orders for admin",
+      "method": "GET",
+      "path": "/?admin=true",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "orders": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Update order status",
+      "method": "PUT",
+      "path": "/",
+      "body": {
+        "order_id": 1,
+        "status": "active"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

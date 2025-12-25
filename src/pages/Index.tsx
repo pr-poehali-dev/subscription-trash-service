@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,12 +18,18 @@ type SubscriptionPlan = {
 };
 
 type Order = {
-  id: string;
-  plan: string;
+  id: number;
+  plan_name: string;
   address: string;
-  date: string;
+  price: number;
   status: 'active' | 'completed' | 'pending';
+  created_at: string;
+  start_date: string;
+  end_date: string;
 };
+
+const API_URL = 'https://functions.poehali.dev/f41d5d3f-73d1-407f-b542-752480b64e8e';
+const DEMO_USER_ID = 1;
 
 const subscriptionPlans: SubscriptionPlan[] = [
   {
@@ -65,26 +71,61 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState('home');
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [address, setAddress] = useState('');
-  const [orders, setOrders] = useState<Order[]>([
-    { id: '1', plan: 'Месячный', address: 'ул. Ленина, 15', date: '2024-12-20', status: 'active' },
-    { id: '2', plan: 'Пробный', address: 'ул. Гагарина, 32', date: '2024-12-18', status: 'completed' }
-  ]);
+  const [name, setName] = useState('Иван Петров');
+  const [email, setEmail] = useState('ivan.petrov@example.com');
+  const [phone, setPhone] = useState('+7 (999) 123-45-67');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleOrderSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}?user_id=${DEMO_USER_ID}`);
+      const data = await response.json();
+      if (data.orders) {
+        setOrders(data.orders);
+      }
+    } catch (error) {
+      console.error('Failed to load orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedPlan && address) {
-      const plan = subscriptionPlans.find(p => p.id === selectedPlan);
-      const newOrder: Order = {
-        id: Date.now().toString(),
-        plan: plan?.name || '',
-        address,
-        date: new Date().toISOString().split('T')[0],
-        status: 'pending'
-      };
-      setOrders([newOrder, ...orders]);
-      setAddress('');
-      setSelectedPlan('');
-      setActiveTab('orders');
+    if (selectedPlan && address && name && email) {
+      setLoading(true);
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            phone,
+            address,
+            plan_id: selectedPlan
+          })
+        });
+
+        if (response.ok) {
+          await loadOrders();
+          setAddress('');
+          setSelectedPlan('');
+          setActiveTab('orders');
+        }
+      } catch (error) {
+        console.error('Failed to create order:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -99,7 +140,7 @@ export default function Index() {
               </div>
               <h1 className="text-2xl font-bold text-green-800">ЭкоВывоз</h1>
             </div>
-            <nav className="hidden md:flex gap-6">
+            <nav className="hidden md:flex gap-6 items-center">
               {['home', 'orders', 'history', 'profile', 'support'].map((tab) => (
                 <button
                   key={tab}
@@ -117,6 +158,12 @@ export default function Index() {
                   {tab === 'support' && 'Поддержка'}
                 </button>
               ))}
+              <a href="/admin" className="ml-2">
+                <Button variant="outline" size="sm">
+                  <Icon name="Shield" size={16} className="mr-2" />
+                  Админ
+                </Button>
+              </a>
             </nav>
             <Button variant="outline" className="md:hidden">
               <Icon name="Menu" size={24} />
@@ -233,6 +280,41 @@ export default function Index() {
                       </select>
                     </div>
                     <div>
+                      <Label htmlFor="name">Имя</Label>
+                      <Input
+                        id="name"
+                        type="text"
+                        placeholder="Ваше имя"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone">Телефон</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="+7 (999) 123-45-67"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
                       <Label htmlFor="address">Адрес вывоза</Label>
                       <Input
                         id="address"
@@ -246,10 +328,20 @@ export default function Index() {
                     </div>
                     <Button
                       type="submit"
+                      disabled={loading}
                       className="w-full bg-gradient-to-r from-green-500 to-lime-500 hover:from-green-600 hover:to-lime-600"
                     >
-                      <Icon name="CheckCircle" size={20} className="mr-2" />
-                      Оформить заказ
+                      {loading ? (
+                        <>
+                          <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
+                          Оформляем...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="CheckCircle" size={20} className="mr-2" />
+                          Оформить заказ
+                        </>
+                      )}
                     </Button>
                   </form>
                 </CardContent>
@@ -301,7 +393,7 @@ export default function Index() {
                 <Card key={order.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle>{order.plan}</CardTitle>
+                      <CardTitle>{order.plan_name}</CardTitle>
                       <Badge
                         variant={order.status === 'active' ? 'default' : 'secondary'}
                         className={order.status === 'active' ? 'bg-green-500' : ''}
@@ -309,12 +401,21 @@ export default function Index() {
                         {order.status === 'active' ? 'Активна' : 'Ожидает'}
                       </Badge>
                     </div>
-                    <CardDescription>Заказ от {order.date}</CardDescription>
+                    <CardDescription>Заказ от {new Date(order.created_at).toLocaleDateString('ru-RU')}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Icon name="MapPin" size={16} />
-                      <span>{order.address}</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Icon name="MapPin" size={16} />
+                        <span>{order.address}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Icon name="Calendar" size={16} />
+                        <span>до {new Date(order.end_date).toLocaleDateString('ru-RU')}</span>
+                      </div>
+                      <div className="text-lg font-semibold text-green-600">
+                        {order.price}₽
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -345,10 +446,10 @@ export default function Index() {
                 <Card key={order.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle>{order.plan}</CardTitle>
+                      <CardTitle>{order.plan_name}</CardTitle>
                       <Badge variant="outline">Завершён</Badge>
                     </div>
-                    <CardDescription>Выполнен {order.date}</CardDescription>
+                    <CardDescription>Выполнен {new Date(order.created_at).toLocaleDateString('ru-RU')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-2 text-muted-foreground">
