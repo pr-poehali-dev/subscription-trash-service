@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "Test Telegram notification with valid data",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Иван Петров",
+        "email": "ivan@example.com",
+        "phone": "+79991234567",
+        "address": "ул. Ленина, д. 10, кв. 5",
+        "plan_name": "Стандарт"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test OPTIONS request for CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

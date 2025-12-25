@@ -29,6 +29,7 @@ type Order = {
 };
 
 const API_URL = 'https://functions.poehali.dev/f41d5d3f-73d1-407f-b542-752480b64e8e';
+const TELEGRAM_API_URL = 'https://functions.poehali.dev/772dac67-e3de-491b-9bc7-6938956ecda6';
 const DEMO_USER_ID = 1;
 
 const subscriptionPlans: SubscriptionPlan[] = [
@@ -101,6 +102,8 @@ export default function Index() {
     if (selectedPlan && address && name && email) {
       setLoading(true);
       try {
+        const plan = subscriptionPlans.find(p => p.id === selectedPlan);
+        
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
@@ -116,6 +119,20 @@ export default function Index() {
         });
 
         if (response.ok) {
+          fetch(TELEGRAM_API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name,
+              email,
+              phone,
+              address,
+              plan_name: plan?.name || selectedPlan
+            })
+          }).catch(err => console.error('Failed to send Telegram notification:', err));
+          
           await loadOrders();
           setAddress('');
           setSelectedPlan('');
